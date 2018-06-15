@@ -1,0 +1,143 @@
+
+getwd()
+
+base = read.csv("IMCinfantil.csv")
+
+class(base)
+names(base)
+
+
+
+dim.datos = dim(base)
+
+n.ind = dim.datos[1]
+n.var = dim.datos[2]
+
+attach(base)
+EDAD
+
+# Variables discretas **********************
+
+fabs = table(EDAD) #Freq Absoluta
+fabs
+
+fabsacum<-as.table(cumsum(fabs))
+fabsacum
+
+frel = round(fabs/n.ind,4) #Freq Relativa
+frel
+
+frelacum<-as.table(cumsum(frel))
+frelacum
+
+barplot(fabs,ylab="Frecuencias absolutas",main="Diagrama de barras de Edad")
+barplot(frel,ylab="Frecuencias relativas",main="Diagrama de barras de Edad")
+
+plot(fabs,type="l",main=c("Poligono de frecuencias absolutas de
+Equipos"),ylab="Frecuencias absolutas")
+
+plot(frel,type="l",main=c("Poligono de frecuencias relativas de
+Equipos"),ylab="Frecuencias relativas")
+
+dotchart(frel,labels=c(6:12),
+         main="Grafico de puntos de Equipos")
+
+pie(fabs,col=terrain.colors(6),main=c("Grafico de tarta de Edades"))
+
+
+# Variable cualitativa ********************************************************
+fabs = table(CatPeso) #Freq Absoluta
+fabs
+
+fabsacum<-as.table(cumsum(fabs))
+fabsacum
+
+frel = round(fabs/n.ind,4) #Freq Relativa
+frel
+
+frelacum<-as.table(cumsum(frel))
+frelacum
+
+barplot(fabs,ylab="Frecuencias absolutas",main="Diagrama de barras de Peso")
+barplot(frel,ylab="Frecuencias relativas",main="Diagrama de barras de Peso")
+
+plot(fabs,type="l",main=c("Poligono de frecuencias absolutas de
+                          Peso"),ylab="Frecuencias absolutas")
+
+plot(frel,type="l",main=c("Poligono de frecuencias relativas de
+                          Peso"),ylab="Frecuencias relativas")
+
+dotchart(frel,labels=levels(CatPeso),
+         main="Grafico de puntos de Peso")
+
+pie(fabs,col=terrain.colors(4),main=c("Grafico de tarta de Peso"))
+
+
+
+# Variables continuas ******************************************
+
+summary(PESO)
+
+fabs = table(cut(PESO, breaks = 10))
+fabs
+
+fabsacum<-cumsum(fabs)
+fabsacum
+
+frel = round(table(cut(PESO, breaks = 10))/n.ind,4)
+frel
+
+frelacum<-cumsum(frel)
+frelacum
+
+hist(PESO)
+n.clases =10
+puntos = min(PESO)+(0:n.clases)*(max(PESO)-min(PESO))/n.clases
+hist(PESO, breaks = puntos)
+
+stem(PESO)  #Diagrama tallo hoja
+
+
+#Medidas de centralizacion, dispersion y forma
+mean(TALLA)
+mean(TALLA, trim = 0.1)
+mean(sort(TALLA)[25:125])
+
+median(TALLA)
+quantile(TALLA,probs=c(.1,.25,.5,.7,.9,.99))
+
+var(PESO)
+sd(PESO)
+sqrt(var(PESO)) #raiz de la varianza =desvio
+
+mad(PESO)
+IQR(PESO)
+range(PESO)
+diff(range(PESO))
+
+#Medidas de formas
+boxplot(PESO,notch = TRUE,col = "blue",main="Grafico de caja de
+Peso")
+
+par(mfrow=c(1,1))
+plot(PESO,TALLA,xlab="Peso",ylab="Talla",main="Grafico de dispersion")
+
+
+par(mfrow=c(1,1))
+plot(PESO,TALLA,xlab="Peso",ylab="Talla",main="Grafico de
+       dispersion")
+
+colores=c("red", "blue")[SEXO]
+plot(PESO,TALLA,xlab="Peso",ylab="Altura",main="Grafico de
+       dispersion",pch=21,bg=colores)
+
+?par
+?points
+
+#zooms en puntos
+plot(PESO,TALLA,xlab="Peso",ylab="Talla",pch=21,bg=colores,
+     xlim=c(20,60),ylim=c(1,2))
+
+#Dispersograma de varias variables
+pairs(base[,c(1,2,5)])
+pairs(base[,c(1,2,5)],pch=21,bg=colores)
