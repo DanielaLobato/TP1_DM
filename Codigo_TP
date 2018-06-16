@@ -1,0 +1,221 @@
+#poner a correr mongo en la consola 
+#C:\Program Files\MongoDB\Server\3.6\bin > mongod
+
+#Directorio de los .json
+getwd()
+setwd("C:/Users/pablo/Documents/Daniela/Maestria/Data Mining/TP1/sampaoli")
+
+library(mongolite)
+library(jsonlite)
+
+coleccion.tweets = mongo(collection = "tweets_mongo-sampaoli", db = "DMUBA")   #Crea colecciones, las podemos ver en Robo3T
+coleccion.users = mongo(collection = "users_mongo-sampaoli", db = "DMUBA")
+
+# Inserto los tweets en las dos colecciones de la DB
+coleccion.tweets$import(file("sampaoli-dump_tweets.json"))
+coleccion.users$import(file("sampaoli-dump_users.json"))
+
+# Cargo los tweets y los usuarios en dos dataframes
+tweets <- coleccion.tweets$find()
+users <- coleccion.users$find()
+
+# ******************************************************************************************************************
+# ********************************             ANALISIS DESCRIPTIVO          ***************************************
+#Librerias
+
+library(modeest)
+library(scatterplot3d)
+library(corrplot)
+library(ggplot2)
+
+#completamos excel con info de las variables
+
+colnames(tweets)
+colnames(users)
+
+summary(tweets_nodup)
+summary(users_nodup)
+
+
+#Revision datos Users ********************************************************************************************
+
+#Cantidad de datos "VACIOS" 
+nrow(users[users$account_lang %in% c(""),])
+
+#Cantidad de datos NA
+length(users$user_id[is.na(users$profile_image_url) == T]) 
+
+#Valores que toma
+length(unique(users$screen_name))
+
+
+#Detectamos repetidos en la base de usuarios, ya que hay varios tweets de ellos en total, pero para unir y hacer un analisis
+#propio de los usuarios, debemos elinarlos. son 532 en realidad
+
+duplicated(users_nodup$user_id)
+users_nodup = users[!duplicated(users$user_id), ]   #se filtra por "user_id" porque SportCenter (ID 524531680) aparece dos veces por tener lista con 2260 y 2261.
+
+users_nodup$user_id[duplicated(users_nodup$user_id) == T]   #OK sin repetidos
+
+
+#Analisis variables numericas de Users *************************
+#Se usa la base sin repetidos
+
+user_numeric = users_nodup[,c(8:12)]   #followers, friends, listed, statuses, favourites
+
+boxplot(user_numeric)  #no se aprecia por la amplia variabilidad de datos
+
+summary(user_numeric)
+
+apply(user_numeric, 2, mfv) #Moda
+
+varianza = apply(user_numeric, 2, var) #varianza
+desvio = apply(user_numeric, 2, sd) #desvio
+est = rbind(varianza, desvio)
+est
+quantile(user_numeric$followers_count, seq(0,1,0.25))
+
+stem(user_numeric$favourites_count)
+
+#Histogramas freq absoluta
+par(mfrow=c(1,5))
+hist(user_numeric$followers_count, xlab = "Followers_count", col = "lightblue")
+hist(user_numeric$friends_count, xlab = "Friends_count", col = "lightblue")
+hist(user_numeric$listed_count, xlab = "Listed_count", col = "lightblue")
+hist(user_numeric$statuses_count, xlab = "Statuses_count", col = "lightblue")
+hist(user_numeric$favourites_count, xlab = "Favourites_count", col = "lightblue")
+
+qqplot(user_numeric$favourites_count, user_numeric$listed_count)
+
+#Correlaciones
+c = cor(user_numeric)
+print(c)
+corrplot(c, method = "square", type = "upper", addCoef.col = TRUE)
+
+pairs(user_numeric, col = terrain.colors(5), line.main = 1)
+
+#Categoricas
+
+tabla1 = table(verified, account_lang)
+tabla1
+plot(tabla1, col = c("red", "blue"), main = "Verificada vs. Lenguaje de la cuenta")
+chisq.test(tabla1)
+
+categoricas = users_nodup[,c(5,14)]
+categoricas$des2 = ifelse(categoricas$description == "",0,1)  #dummy para los que tienen descripcion
+categoricas = categoricas[,c(2:3)]
+tabla2 = table(categoricas$verified, categoricas$des2)
+tabla2
+plot(tabla2)     #Si posee descripcion y si esta verificada la cuenta
+chisq.test(tabla2)
+
+
+#revision de verificadas             *NO LO USE
+check = users_nodup[,c(8,14)]
+check$followers_count = floor(log(check$followers_count)) #normaliza
+boxplot(check$followers_count ~ check$verified)
+title("Seguidores en funcion si la cuenta esta verificada o no")
+
+
+check_verified = as.data.frame(cbind(verified,user_numeric))
+check_verifiedT = check_verified[check_verified$verified == TRUE,]
+summary(check_verifiedT)
+
+check_verifiedF = check_verified[check_verified$verified == FALSE,]
+summary(check_verifiedF)
+
+boxplot(check_verified$listed_count ~ check_verified$verified)
+
+
+#Z-score   ??????????????????????
+normalizada = as.data.frame(scale(user_numeric))
+pairs(normalizada)
+cor(normalizada)
+boxplot(normalizada)
+
+
+#Revision datos Tweets ********************************************************************************************
+
+#Cantidad de datos "VACIOS" 
+nrow(users[tweets_nodup$lang %in% c(""),])
+
+#Cantidad de datos NA
+length(tweets_nodup$user_id[is.na(tweets_nodup$lat) == T]) 
+
+unique(tweets_nodup$geo_coords)
+
+length(tweets$user_id[(tweets$media_type) == c("photo")])
+length(tabla_merge$user_id[(is.na(tabla_merge$symbols) == TRUE)])  #Todas NA
+
+#Duplicados **********************
+duplicated(tweets)
+tweets_nodup = tweets[!duplicated(tweets),]
+tweets_nodup$user_id[duplicated(tweets_nodup$status_id == T)]
+
+length(unique(tweets_nodup$user_id))
+duplicated(tweets_nodup$status_id)
+
+
+#Analisis variables numericas de Tweets *************************
+
+tweets_numeric = tweets[,c(9:10)]   #favorite, retweet count
+
+boxplot(tweets_numeric)  #no se aprecia por la amplia variabilidad de datos
+summary(tweets_numeric)
+
+apply(tweets_numeric, 2, mfv) #Moda
+varianza = apply(tweets_numeric, 2, var) #varianza
+desvio = apply(tweets_numeric, 2, sd) #desvio
+
+est = rbind(varianza, desvio)
+est
+quantile(tweets_numeric$retweet_count, seq(0,1,0.25))
+
+stem(tweets_numeric$favorite_count)  #hay 1 que supera los 24,000 y el resto tiene menos de 1.000
+stem(tweets_numeric$retweet_count) #hay 1 que superan los 10.000 y el resto tiene menos de 1.000
+
+table(tweets_numeric) #tabla de contingencia, el mismo que tiene el mayor valor de fav es de ret y tiene fecha 21/5 el resto son del 27 y 28.
+
+#Histogramas freq absoluta
+par(mfrow=c(1,2))
+hist(tweets_numeric$favorite_count, xlab = "Favorite Count", col = "lightblue")
+hist(tweets_numeric$retweet_count, xlab = "Retweet Count", col = "lightblue")
+
+qqplot(tweets_numeric$favorite_count, tweets_numeric$retweet_count)
+
+#Correlaciones
+c = cor(tweets_numeric)
+print(c)
+corrplot(c, method = "square", type = "upper", addCoef.col = TRUE)
+
+pairs(tweets_numeric, col = terrain.colors(5), line.main = 1)
+
+#sacando el unico tweet de valores muy grandes
+tweets_num2 = tweets_numeric[tweets_numeric$favorite_count < 24000,]
+summary(tweets_num2)
+hist(tweets_num2$favorite_count)
+hist(tweets_num2$retweet_count)
+pairs(tweets_num2)
+corrplot(cor(tweets_num2), addCoef.col = TRUE)
+
+
+
+
+#Transformacion de la base **********************************************************************
+
+#merge
+tabla_merge = merge(users_nodup, tweets, by.x = c("user_id", "screen_name"), by.y = c("user_id", "screen_name"))
+
+#transformamos variables texto/url/etc a dummy de presencia:
+
+tabla_merge$desc_dummy = ifelse(tabla_merge$description == "",0,1)   #si tiene descripcion en su usuario
+
+tabla_merge$hashtag_dummy = ifelse(is.na(tabla_merge$hashtags) == FALSE,1,0)
+
+tabla_merge$mentions_dummy = ifelse(is.na(tabla_merge$mentions_user_id) == FALSE,1,0)
+
+tabla_merge$reply_dummy = ifelse(is.na(tabla_merge$reply_to_status_id) == FALSE,1,0)
+
+tabla_merge$clase_popular = ifelse((tabla_merge$favorite_count > 0) | (tabla_merge$retweet_count > 0),1,0)
+
+tabla_final = tabla_merge[,c(8:14,17,22:25,60:63)]
