@@ -1,0 +1,134 @@
+---
+title: "Prueba PAM"
+output: html_notebook
+---
+
+Prueba PAM para el dataset de Hiparcos
+
+Primer prueba calculo de distancias con "Gower" 
+Armamos el Cluster Jerarquico, con la matriz de distancias
+
+```{r}
+hip <- read.csv("hip.csv", header=T)
+hip_cluster = hip[,c(2:3, 6:8)]
+
+hip_cluster2 =  as.data.frame(apply(hip_cluster, 2, scale))
+
+hip_dgower <- daisy(hip_cluster2, metric="gower")
+
+plot(as.dendrogram(hclust(hip_dgower)), leaflab="none")
+
+
+```
+
+Probamos PAM aunque tengamos todas las variables continuas.
+Kmedias seria mas util.
+
+Buscamos el K viendo el error y Silhouette
+Loop para distintos valores de K, corre PAM, calcula medoide, SSE y Silhouette.
+
+SSE mira el salto en los errores
+Silhoutte, esperamos que suba y listo .. pero aca vemos un comportamiento mas raro
+Ambos muestran como max k=2
+
+
+```{r}
+sse_p_hip <- array()
+sil_hip <- array()
+kit <- 10  #Arbitrario
+
+for(i in 1:kit){
+  # Cálculo de PAM:
+  hip_pam <- pam(hip_dgower, i+1, diss = T)
+  
+  # Determinar el ID del medoide que le corresponde a cada registro:
+  hip_meds <- hip_pam$medoids[hip_pam$clustering]
+  # Cálculo de SSEs: construir un vector que registre las distancias entre
+  # cada objeto y su correspondiente medoide elevadas al cuadrado, y luego
+  # calcular su suma. Almacenar cada SSE en un vector.
+  sse_p_hip[i] <- sum(as.matrix(hip_dgower)[cbind(row.names(hip_cluster2), hip_meds)]^2)
+  
+  # Almacenar cada valor de silhouette global
+  sil_hip[i] <- hip_pam$silinfo$avg.width
+}
+
+par(mfrow=c(2,1))
+plot(2:(kit+1), sil_hip, type="b", xlab="k", sub="Silhouette")
+plot(2:(kit+1), sse_p_hip, type="b", xlab="k", sub = "SSE")
+
+
+```
+
+
+
+Grafico de Silhouette
+
+```{r}
+par(mfrow=c(1,1))
+hip_pam <- pam(hip_dgower, 4, diss = T)
+plot(silhouette(hip_pam), main="Silhouette, k = 4")
+
+```
+
+
+Vemos los Prototipo: MEDOIDE, el valor tipico de cada clase
+
+```{r}
+data.frame(hip_cluster2[hip_pam$medoids,], tamano=hip_pam$clusinfo[,1])
+
+```
+
+Verificamos si existen clusters aislados o estan solapados.
+Estan todos solapados
+
+
+```{r}
+
+hip_pam$isolation
+
+```
+
+Gráfico para ver la relación entre grupos e individuos.
+Vemos con elipses los cluster
+las lineas sirven para dar idea de distancias entre clusters
+
+```{r}
+clusplot(hip_pam)
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
